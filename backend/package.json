@@ -20,10 +20,7 @@
     "jsonwebtoken": "^9.0.2",
     "dotenv": "^16.3.1",
     "uuid": "^9.0.0",
-    "sharp": "^0.32.6",
-    "pdf2pic": "^3.1.0",
-    "mammoth": "^1.4.2",
-    "docx-pdf": "^1.0.1"
+    "sharp": "^0.32.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
