@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs-extra');
 const Setting = require('../models/Setting');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -25,6 +24,21 @@ const authenticateAdmin = async (req, res, next) => {
         res.status(401).json({ error: 'Invalid token' });
     }
 };
+
+// Configure multer for logo upload (using memory storage)
+const logoStorage = multer.memoryStorage();
+const uploadLogo = multer({ 
+    storage: logoStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
 
 // Login
 router.post('/login', async (req, res) => {
@@ -84,24 +98,22 @@ router.put('/settings', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Upload logo
-router.post('/upload-logo', authenticateAdmin, multer({
-    storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-            const uploadPath = path.join(__dirname, '../../frontend/assets');
-            fs.ensureDirSync(uploadPath);
-            cb(null, uploadPath);
-        },
-        filename: (req, file, cb) => {
-            cb(null, `logo-${Date.now()}${path.extname(file.originalname)}`);
-        }
-    })
-}).single('logo'), async (req, res) => {
+// Upload logo (using memory storage - no disk writes)
+router.post('/upload-logo', authenticateAdmin, uploadLogo.single('logo'), async (req, res) => {
     try {
-        const logoUrl = `/assets/${req.file.filename}`;
-        await Setting.findOneAndUpdate({}, { siteLogo: logoUrl });
-        res.json({ success: true, logoUrl });
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        
+        // Convert image to base64 for storage
+        const base64Logo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        
+        // Store base64 image in database
+        await Setting.findOneAndUpdate({}, { siteLogo: base64Logo });
+        
+        res.json({ success: true, logoUrl: base64Logo });
     } catch (error) {
+        console.error('Logo upload error:', error);
         res.status(500).json({ error: error.message });
     }
 });
