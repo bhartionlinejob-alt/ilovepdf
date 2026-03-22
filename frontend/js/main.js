@@ -188,32 +188,46 @@ class PDFToolsApp {
 }
     
     displayResult(result) {
-        const resultContainer = document.getElementById('result');
-        resultContainer.innerHTML = '';
-        
-        const successDiv = document.createElement('div');
-        successDiv.className = 'result-success';
-        
-        if (result.downloadUrl) {
-            successDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i>
-                <p>File processed successfully!</p>
-                <a href="${result.downloadUrl}" class="download-link" download>
-                    <i class="fas fa-download"></i> Download File
-                </a>
-                ${result.originalSize ? `<p>Original: ${this.formatBytes(result.originalSize)}<br>Compressed: ${this.formatBytes(result.compressedSize)}<br>Saved: ${Math.round((1 - result.compressedSize/result.originalSize) * 100)}%</p>` : ''}
-            `;
-        } else if (result.files) {
-            successDiv.innerHTML = '<h3>Split Files:</h3>';
-            result.files.forEach(file => {
-                successDiv.innerHTML += `<div><a href="${file.downloadUrl}" download>Page ${file.page} - Download</a></div>`;
-            });
+    const resultContainer = document.getElementById('result');
+    resultContainer.innerHTML = '';
+    
+    const successDiv = document.createElement('div');
+    successDiv.className = 'result-success';
+    
+    if (result.downloadUrl || result.downloadId) {
+        const downloadUrl = result.downloadUrl || `/api/pdf/download/${result.downloadId}`;
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <p>${result.message || 'File processed successfully!'}</p>
+            <a href="${downloadUrl}" class="download-link" download>
+                <i class="fas fa-download"></i> Download File (Available for 1 hour)
+            </a>
+            ${result.originalSize ? `<p>Original: ${this.formatBytes(result.originalSize)}<br>Compressed: ${this.formatBytes(result.compressedSize)}<br>Saved: ${Math.round((1 - result.compressedSize/result.originalSize) * 100)}%</p>` : ''}
+            ${result.pages ? `<p>Pages converted: ${result.pages}</p>` : ''}
+            ${result.convertedPages ? `<p>Converted ${result.convertedPages} of ${result.totalPages} pages</p>` : ''}
+            <small style="display: block; margin-top: 10px; color: #666;">⚠️ File will be automatically deleted after 1 hour</small>
+        `;
+    } else if (result.files) {
+        successDiv.innerHTML = '<h3>Split Files (Available for 1 hour):</h3>';
+        result.files.forEach(file => {
+            const downloadUrl = file.downloadUrl || `/api/pdf/download/${file.downloadId}`;
+            successDiv.innerHTML += `<div style="margin: 10px 0;"><a href="${downloadUrl}" download>📄 Page ${file.page} - Download</a></div>`;
+        });
+    } else if (result.images) {
+        successDiv.innerHTML = '<h3>Converted Images (Available for 1 hour):</h3>';
+        result.images.forEach(image => {
+            const downloadUrl = image.downloadUrl || `/api/pdf/download/${image.downloadId}`;
+            successDiv.innerHTML += `<div style="margin: 10px 0;"><a href="${downloadUrl}" download>🖼️ Page ${image.page} - Download</a></div>`;
+        });
+        if (result.message) {
+            successDiv.innerHTML += `<p style="margin-top: 10px;"><small>${result.message}</small></p>`;
         }
-        
-        resultContainer.appendChild(successDiv);
-        resultContainer.classList.add('show');
-        resultContainer.scrollIntoView({ behavior: 'smooth' });
     }
+    
+    resultContainer.appendChild(successDiv);
+    resultContainer.classList.add('show');
+    resultContainer.scrollIntoView({ behavior: 'smooth' });
+}
     
     showMessage(message, type) {
         const messageDiv = document.createElement('div');
