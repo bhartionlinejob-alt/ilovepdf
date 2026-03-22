@@ -7,7 +7,7 @@ const settingSchema = new mongoose.Schema({
     },
     siteLogo: {
         type: String,
-        default: '/assets/default-logo.png'
+        default: '' // Will store base64 image or URL
     },
     favicon: {
         type: String,
@@ -48,11 +48,11 @@ const settingSchema = new mongoose.Schema({
     },
     footerText: {
         type: String,
-        default: '© 2024 PDF Tools. All files are automatically deleted after 1 hour.'
+        default: '© 2024 PDF Tools. Files are stored in memory and automatically deleted after 1 hour.'
     },
     maxFileSize: {
         type: Number,
-        default: 50
+        default: 10
     },
     enableWatermark: {
         type: Boolean,
