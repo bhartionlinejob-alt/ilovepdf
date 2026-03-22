@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -7,7 +6,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const fs = require('fs-extra');
+const fs = require('fs'); // Use native fs instead of fs-extra
 
 const pdfRoutes = require('./routes/pdf');
 const adminRoutes = require('./routes/admin');
@@ -47,8 +46,8 @@ async function initializeSettings() {
                 customCSS: '',
                 customJS: '',
                 analyticsCode: '',
-                footerText: '© 2024 PDF Tools. All files are automatically deleted after 1 hour.',
-                maxFileSize: 50,
+                footerText: '© 2024 PDF Tools. Files are stored in memory and automatically deleted after 1 hour.',
+                maxFileSize: 10,
                 enableWatermark: true,
                 watermarkText: 'WATERMARK'
             });
@@ -69,7 +68,6 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
     credentials: true
 }));
-// Increase payload limits for file uploads
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -77,17 +75,13 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
 
-// Rate limiting
+// Rate limiting (stricter for free tier)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: 'Too many requests from this IP, please try again later.'
+    max: 50, // Reduced for free tier
+    message: 'Too many requests, please try again later.'
 });
 app.use('/api/', limiter);
-
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, 'uploads');
-fs.ensureDirSync(uploadDir);
 
 // Routes
 app.use('/api/pdf', pdfRoutes);
@@ -111,7 +105,11 @@ app.get('/api/settings', async (req, res) => {
 
 // Health check endpoint for Render
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+    res.status(200).json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        storage: 'memory'
+    });
 });
 
 // Serve admin page
@@ -119,29 +117,10 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/admin.html'));
 });
 
-// Handle SPA routing - serve index.html for all other routes
+// Handle SPA routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
-
-// Clean up old files every hour
-setInterval(async () => {
-    try {
-        const files = await fs.readdir(uploadDir);
-        const now = Date.now();
-        for (const file of files) {
-            if (file === '.gitkeep') continue;
-            const filePath = path.join(uploadDir, file);
-            const stats = await fs.stat(filePath);
-            if (now - stats.mtimeMs > 3600000) {
-                await fs.unlink(filePath);
-                console.log(`Deleted old file: ${file}`);
-            }
-        }
-    } catch (error) {
-        console.error('Cleanup error:', error);
-    }
-}, 3600000);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -155,4 +134,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Storage: Memory-based (Render free tier compatible)`);
 });
