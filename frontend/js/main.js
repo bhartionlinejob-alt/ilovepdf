@@ -53,47 +53,67 @@ class PDFToolsApp {
     }
     
     loadTools() {
-        const tools = [
-            { id: 'merge', icon: 'fa-object-group', name: 'Merge PDF', description: 'Combine multiple PDF files into one', endpoint: '/api/pdf/merge', multiple: true },
-            { id: 'split', icon: 'fa-cut', name: 'Split PDF', description: 'Split PDF into separate pages', endpoint: '/api/pdf/split', multiple: false },
-            { id: 'compress', icon: 'fa-compress-alt', name: 'Compress PDF', description: 'Reduce PDF file size', endpoint: '/api/pdf/compress', multiple: false },
-            { id: 'rotate', icon: 'fa-undo-alt', name: 'Rotate PDF', description: 'Rotate PDF pages', endpoint: '/api/pdf/rotate', multiple: false, hasAngle: true },
-            { id: 'watermark', icon: 'fa-water', name: 'Add Watermark', description: 'Add text watermark to PDF', endpoint: '/api/pdf/watermark', multiple: false, hasText: true },
-            { id: 'protect', icon: 'fa-lock', name: 'Protect PDF', description: 'Add password protection', endpoint: '/api/pdf/protect', multiple: false, hasPassword: true }
-        ];
+    const tools = [
+        // Basic PDF Tools
+        { id: 'merge', icon: 'fa-object-group', name: 'Merge PDF', description: 'Combine multiple PDF files into one', endpoint: '/api/pdf/merge', multiple: true, accept: '.pdf' },
+        { id: 'split', icon: 'fa-cut', name: 'Split PDF', description: 'Split PDF into separate pages', endpoint: '/api/pdf/split', multiple: false, accept: '.pdf' },
+        { id: 'compress', icon: 'fa-compress-alt', name: 'Compress PDF', description: 'Reduce PDF file size', endpoint: '/api/pdf/compress', multiple: false, accept: '.pdf' },
+        { id: 'rotate', icon: 'fa-undo-alt', name: 'Rotate PDF', description: 'Rotate PDF pages', endpoint: '/api/pdf/rotate', multiple: false, accept: '.pdf', hasAngle: true },
+        { id: 'watermark', icon: 'fa-water', name: 'Add Watermark', description: 'Add text watermark to PDF', endpoint: '/api/pdf/watermark', multiple: false, accept: '.pdf', hasText: true },
+        { id: 'protect', icon: 'fa-lock', name: 'Protect PDF', description: 'Add password protection', endpoint: '/api/pdf/protect', multiple: false, accept: '.pdf', hasPassword: true },
         
-        const toolsGrid = document.getElementById('tools-grid');
-        toolsGrid.innerHTML = '';
+        // Conversion Tools
+        { id: 'pdf-to-word', icon: 'fa-file-word', name: 'PDF to Word', description: 'Convert PDF to editable Word document', endpoint: '/api/pdf/pdf-to-word', multiple: false, accept: '.pdf', color: '#2b5797' },
+        { id: 'word-to-pdf', icon: 'fa-file-pdf', name: 'Word to PDF', description: 'Convert Word document to PDF', endpoint: '/api/pdf/word-to-pdf', multiple: false, accept: '.doc,.docx', color: '#185abd' },
+        { id: 'pdf-to-images', icon: 'fa-file-image', name: 'PDF to Images', description: 'Convert PDF pages to JPG/PNG images', endpoint: '/api/pdf/pdf-to-images', multiple: false, accept: '.pdf', hasFormat: true },
+        { id: 'images-to-pdf', icon: 'fa-images', name: 'Images to PDF', description: 'Convert JPG/PNG images to PDF', endpoint: '/api/pdf/images-to-pdf', multiple: true, accept: '.jpg,.jpeg,.png,.gif' }
+    ];
+    
+    const toolsGrid = document.getElementById('tools-grid');
+    toolsGrid.innerHTML = '';
+    
+    tools.forEach(tool => {
+        const card = document.createElement('div');
+        card.className = 'tool-card';
+        card.id = tool.id;
         
-        tools.forEach(tool => {
-            const card = document.createElement('div');
-            card.className = 'tool-card';
-            card.id = tool.id;
-            
-            let extraFields = '';
-            if (tool.hasAngle) {
-                extraFields = `<select class="rotate-angle"><option value="90">90° Clockwise</option><option value="180">180°</option><option value="270">270°</option></select>`;
-            } else if (tool.hasText) {
-                extraFields = `<input type="text" class="watermark-text" placeholder="Watermark text" value="${this.settings?.watermarkText || 'WATERMARK'}">`;
-            } else if (tool.hasPassword) {
-                extraFields = `<input type="password" class="password-input" placeholder="Password">`;
-            }
-            
-            card.innerHTML = `
-                <div class="tool-icon"><i class="fas ${tool.icon}"></i></div>
-                <h2>${tool.name}</h2>
-                <p>${tool.description}</p>
-                <div class="tool-content">
-                    <input type="file" class="file-input" ${tool.multiple ? 'multiple' : ''} accept=".pdf">
-                    ${extraFields}
-                    <button class="btn-primary" data-action="${tool.id}" data-endpoint="${tool.endpoint}">${tool.name}</button>
-                    <div class="progress-bar"><div class="progress"></div></div>
-                </div>
+        let extraFields = '';
+        if (tool.hasAngle) {
+            extraFields = `<select class="rotate-angle"><option value="90">90° Clockwise</option><option value="180">180°</option><option value="270">270°</option></select>`;
+        } else if (tool.hasText) {
+            extraFields = `<input type="text" class="watermark-text" placeholder="Watermark text" value="${this.settings?.watermarkText || 'WATERMARK'}">`;
+        } else if (tool.hasPassword) {
+            extraFields = `<input type="password" class="password-input" placeholder="Password">`;
+        } else if (tool.hasFormat) {
+            extraFields = `
+                <select class="image-format">
+                    <option value="jpg">JPG Format</option>
+                    <option value="png">PNG Format</option>
+                </select>
+                <input type="number" class="image-quality" placeholder="Quality (1-100)" value="80" min="1" max="100">
             `;
-            
-            toolsGrid.appendChild(card);
-        });
-    }
+        }
+        
+        // Set accept attribute based on file types
+        const acceptAttr = tool.accept || '.pdf';
+        
+        card.innerHTML = `
+            <div class="tool-icon" style="${tool.color ? `color: ${tool.color}` : ''}">
+                <i class="fas ${tool.icon}"></i>
+            </div>
+            <h2>${tool.name}</h2>
+            <p>${tool.description}</p>
+            <div class="tool-content">
+                <input type="file" class="file-input" ${tool.multiple ? 'multiple' : ''} accept="${acceptAttr}">
+                ${extraFields}
+                <button class="btn-primary" data-action="${tool.id}" data-endpoint="${tool.endpoint}">${tool.name}</button>
+                <div class="progress-bar"><div class="progress"></div></div>
+            </div>
+        `;
+        
+        toolsGrid.appendChild(card);
+    });
+}
     
     setupEventListeners() {
         document.addEventListener('click', async (e) => {
