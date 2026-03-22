@@ -13,7 +13,5 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         sync: false
-    disk:
-      name: uploads
-      mountPath: /opt/render/project/src/backend/uploads
-      sizeGB: 1
+      - key: STORAGE_TYPE
+        value: memory
