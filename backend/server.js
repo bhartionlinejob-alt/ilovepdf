@@ -6,7 +6,6 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const fs = require('fs'); // Use native fs instead of fs-extra
 
 const pdfRoutes = require('./routes/pdf');
 const adminRoutes = require('./routes/admin');
@@ -27,7 +26,6 @@ mongoose.connect(MONGODB_URI, {
     initializeSettings();
 }).catch(err => {
     console.error('MongoDB connection error:', err);
-    console.log('Continuing without database...');
 });
 
 // Initialize default settings
@@ -37,15 +35,9 @@ async function initializeSettings() {
         if (!settings) {
             const defaultSettings = new Setting({
                 siteName: 'PDF Tools',
-                siteLogo: '/assets/default-logo.png',
                 primaryColor: '#e74c3c',
                 secondaryColor: '#c0392b',
                 theme: 'light',
-                adsenseEnabled: false,
-                adsenseCode: '',
-                customCSS: '',
-                customJS: '',
-                analyticsCode: '',
                 footerText: '© 2024 PDF Tools. Files are stored in memory and automatically deleted after 1 hour.',
                 maxFileSize: 10,
                 enableWatermark: true,
@@ -75,10 +67,10 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
 
-// Rate limiting (stricter for free tier)
+// Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50, // Reduced for free tier
+    max: 50,
     message: 'Too many requests, please try again later.'
 });
 app.use('/api/', limiter);
@@ -93,7 +85,6 @@ app.get('/api/settings', async (req, res) => {
         const settings = await Setting.findOne();
         res.json(settings || {});
     } catch (error) {
-        console.error('Settings fetch error:', error);
         res.json({
             siteName: 'PDF Tools',
             primaryColor: '#e74c3c',
@@ -103,7 +94,7 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-// Health check endpoint for Render
+// Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({ 
         status: 'healthy', 
@@ -117,7 +108,7 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/admin.html'));
 });
 
-// Handle SPA routing
+// Handle all other routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
@@ -134,5 +125,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Storage: Memory-based (Render free tier compatible)`);
 });
