@@ -124,60 +124,68 @@ class PDFToolsApp {
         });
     }
     
-    async handleToolAction(button) {
-        const toolCard = button.closest('.tool-card');
-        const fileInput = toolCard.querySelector('.file-input');
-        const progressBar = toolCard.querySelector('.progress-bar');
-        const endpoint = button.dataset.endpoint;
-        
-        if (!fileInput.files || fileInput.files.length === 0) {
-            this.showMessage('Please select at least one file', 'error');
-            return;
-        }
-        
-        button.disabled = true;
-        progressBar.classList.add('active');
-        
-        try {
-            const formData = new FormData();
-            
-            if (fileInput.multiple) {
-                for (let file of fileInput.files) {
-                    formData.append('pdfs', file);
-                }
-            } else {
-                formData.append('file', fileInput.files[0]);
-            }
-            
-            const angle = toolCard.querySelector('.rotate-angle')?.value;
-            if (angle) formData.append('angle', angle);
-            
-            const watermarkText = toolCard.querySelector('.watermark-text')?.value;
-            if (watermarkText) formData.append('text', watermarkText);
-            
-            const password = toolCard.querySelector('.password-input')?.value;
-            if (password) formData.append('password', password);
-            
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.success || result.downloadUrl) {
-                this.displayResult(result);
-                this.showMessage('Operation completed successfully!', 'success');
-            } else {
-                throw new Error(result.error || 'Operation failed');
-            }
-        } catch (error) {
-            this.showMessage(`Error: ${error.message}`, 'error');
-        } finally {
-            button.disabled = false;
-            progressBar.classList.remove('active');
-        }
+   async handleToolAction(button) {
+    const toolCard = button.closest('.tool-card');
+    const fileInput = toolCard.querySelector('.file-input');
+    const progressBar = toolCard.querySelector('.progress-bar');
+    const endpoint = button.dataset.endpoint;
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        this.showMessage('Please select at least one file', 'error');
+        return;
     }
+    
+    button.disabled = true;
+    progressBar.classList.add('active');
+    
+    try {
+        const formData = new FormData();
+        
+        if (fileInput.multiple) {
+            for (let file of fileInput.files) {
+                formData.append('images', file); // For images to PDF
+                formData.append('pdfs', file); // For merge PDF
+            }
+        } else {
+            formData.append('file', fileInput.files[0]);
+        }
+        
+        // Get additional parameters
+        const angle = toolCard.querySelector('.rotate-angle')?.value;
+        if (angle) formData.append('angle', angle);
+        
+        const watermarkText = toolCard.querySelector('.watermark-text')?.value;
+        if (watermarkText) formData.append('text', watermarkText);
+        
+        const password = toolCard.querySelector('.password-input')?.value;
+        if (password) formData.append('password', password);
+        
+        const imageFormat = toolCard.querySelector('.image-format')?.value;
+        if (imageFormat) formData.append('format', imageFormat);
+        
+        const imageQuality = toolCard.querySelector('.image-quality')?.value;
+        if (imageQuality) formData.append('quality', imageQuality);
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success || result.downloadUrl || result.downloadId) {
+            this.displayResult(result);
+            this.showMessage('Operation completed successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Operation failed');
+        }
+    } catch (error) {
+        this.showMessage(`Error: ${error.message}`, 'error');
+    } finally {
+        button.disabled = false;
+        progressBar.classList.remove('active');
+    }
+}
     
     displayResult(result) {
         const resultContainer = document.getElementById('result');
