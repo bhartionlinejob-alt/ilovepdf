@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 const CloudConvert = require('cloudconvert');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,13 +13,13 @@ const PORT = process.env.PORT || 3000;
 const CLOUDCONVERT_API_KEY = process.env.CLOUDCONVERT_API_KEY;
 const IS_CLOUDCONVERT_AVAILABLE = !!CLOUDCONVERT_API_KEY;
 
-// Initialize CloudConvert (v2 SDK syntax - direct string, not object)
+// Initialize CloudConvert CORRECTLY (v2 SDK - pass string directly)
 let cloudConvert = null;
 if (IS_CLOUDCONVERT_AVAILABLE) {
     cloudConvert = new CloudConvert(CLOUDCONVERT_API_KEY);
     console.log('✅ CloudConvert API initialized');
 } else {
-    console.warn('⚠️ CLOUDCONVERT_API_KEY not set. Word conversion will not work.');
+    console.warn('⚠️ CLOUDCONVERT_API_KEY not set');
 }
 
 // Configure multer
@@ -59,34 +60,35 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     try {
         console.log(`🔄 CloudConvert: ${inputFormat} → ${outputFormat}`);
         
-        // Create job with PROPER task structure
-        // Task names must be unique and referenced correctly
+        // Create job with CORRECT task structure
+        // Each task must have a unique name and proper input references
         const job = await cloudConvert.jobs.create({
             tasks: {
-                // Step 1: Import/upload the file
-                'import-my-file': {
+                'upload-file': {
                     operation: 'import/upload'
                 },
-                // Step 2: Convert the file (input MUST reference the import task)
-                'convert-my-file': {
+                'convert-file': {
                     operation: 'convert',
-                    input: 'import-my-file',  // ← CRITICAL: references the import task
+                    input: 'upload-file',  // MUST reference the upload task
                     input_format: inputFormat,
                     output_format: outputFormat,
                     engine: 'default'
                 },
-                // Step 3: Export to URL
-                'export-my-file': {
+                'export-file': {
                     operation: 'export/url',
-                    input: 'convert-my-file'  // ← CRITICAL: references the convert task
+                    input: 'convert-file'  // MUST reference the convert task
                 }
             }
         });
 
-        // Find the upload task
-        const uploadTask = job.tasks.find(task => task.name === 'import-my-file');
+        // Get the upload task
+        const uploadTask = job.tasks.find(task => task.name === 'upload-file');
         
-        // Upload using the SDK's built-in upload method
+        if (!uploadTask) {
+            throw new Error('Upload task not found');
+        }
+
+        // Upload file using the SDK's upload method
         const { Readable } = require('stream');
         const bufferStream = new Readable();
         bufferStream.push(fileBuffer);
@@ -96,15 +98,16 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
         
         console.log('📤 File uploaded, waiting for conversion...');
 
-        // Wait for job completion
-        let finishedJob = await cloudConvert.jobs.wait(job.id);
+        // Wait for job completion (polling)
+        let jobStatus = await cloudConvert.jobs.wait(job.id);
         
-        if (finishedJob.status === 'error') {
-            throw new Error(finishedJob.message || 'Conversion failed');
+        // Check if job has error
+        if (jobStatus.status === 'error') {
+            throw new Error(jobStatus.message || 'Conversion failed');
         }
 
-        // Get the export task
-        const exportTask = finishedJob.tasks.find(task => task.name === 'export-my-file');
+        // Find export task
+        const exportTask = jobStatus.tasks.find(task => task.name === 'export-file');
         
         if (!exportTask || !exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
             throw new Error('No output file generated');
@@ -113,10 +116,9 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
         const file = exportTask.result.files[0];
         const downloadUrl = file.url;
         
-        console.log(`📥 Downloading converted file from: ${downloadUrl}`);
+        console.log(`📥 Downloading from: ${downloadUrl}`);
         
         // Download the converted file
-        const https = require('https');
         const outputBuffer = await new Promise((resolve, reject) => {
             https.get(downloadUrl, (response) => {
                 if (response.statusCode !== 200) {
@@ -139,7 +141,7 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     }
 }
 
-// ============ FREE PDF OPERATIONS (No API needed) ============
+// ============ FREE PDF OPERATIONS ============
 
 async function protectPdf(pdfBuffer, password) {
     const pdfDoc = await PDFDocument.load(pdfBuffer);
@@ -210,7 +212,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured. Add CLOUDCONVERT_API_KEY in Render environment variables.' 
+                        error: 'CloudConvert API key not configured' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'docx', 'pdf');
@@ -221,7 +223,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured.' 
+                        error: 'CloudConvert API key not configured' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'docx');
@@ -232,7 +234,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured.' 
+                        error: 'CloudConvert API key not configured' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'png');
@@ -278,7 +280,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
         console.error('❌ Conversion error:', error);
         res.status(500).json({ 
             success: false, 
-            error: error.message || 'Conversion failed. Please try again.' 
+            error: error.message || 'Conversion failed' 
         });
     }
 });
@@ -310,5 +312,5 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n🚀 Server running on port ${PORT}`);
-    console.log(`🔑 CloudConvert API: ${IS_CLOUDCONVERT_AVAILABLE ? '✅ Configureed' : '❌ Not configured'}`);
+    console.log(`🔑 CloudConvert API: ${IS_CLOUDCONVERT_AVAILABLE ? '✅ Configured' : '❌ Not configured'}`);
 });
