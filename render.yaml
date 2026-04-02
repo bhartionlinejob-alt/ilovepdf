@@ -1,13 +1,13 @@
 services:
   - type: web
     name: pdf-4u-online
-    env: node
-    buildCommand: npm install
-    startCommand: npm start
+    runtime: image
+    repo: https://github.com/YOUR_USERNAME/pdf-4u-online
+    plan: free
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_VERSION
         value: 18.17.0
-    plan: free
     healthCheckPath: /health
     domains:
       - pdf-4u.online
