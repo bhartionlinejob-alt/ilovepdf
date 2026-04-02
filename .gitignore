@@ -1,5 +1,9 @@
 node_modules/
 temp/
+.env
 *.log
 .DS_Store
-.env
+dist/
+*.pid
+npm-debug.log
+yarn-error.log
