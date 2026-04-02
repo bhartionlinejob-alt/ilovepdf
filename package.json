@@ -1,7 +1,7 @@
 {
   "name": "pdf-4u-online",
-  "version": "1.0.0",
-  "description": "Free PDF Tools Website - Convert, Protect & Edit PDFs",
+  "version": "2.0.0",
+  "description": "Real PDF Tools Website - Convert, Protect & Edit PDFs",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,6 +17,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": "18.x"
   },
   "keywords": ["pdf", "converter", "pdf-tools", "free-pdf", "pdf-to-word"],
   "author": "PDF-4U",
