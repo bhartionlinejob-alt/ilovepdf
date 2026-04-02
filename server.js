@@ -12,28 +12,26 @@ const PORT = process.env.PORT || 3000;
 const CLOUDCONVERT_API_KEY = process.env.CLOUDCONVERT_API_KEY;
 const IS_CLOUDCONVERT_AVAILABLE = !!CLOUDCONVERT_API_KEY;
 
-// Initialize CloudConvert if API key is provided (v2 syntax)
+// Initialize CloudConvert (v2 SDK syntax - direct string, not object)
 let cloudConvert = null;
 if (IS_CLOUDCONVERT_AVAILABLE) {
     cloudConvert = new CloudConvert(CLOUDCONVERT_API_KEY);
     console.log('✅ CloudConvert API initialized');
 } else {
     console.warn('⚠️ CLOUDCONVERT_API_KEY not set. Word conversion will not work.');
-    console.warn('Add it in Render Dashboard → Environment Variables');
 }
 
-// Configure multer for file upload
+// Configure multer
 const storage = multer.memoryStorage();
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Serve static files
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// Ensure temp directory exists
+// Temp directory
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir);
@@ -47,71 +45,89 @@ setInterval(() => {
         const stats = fs.statSync(filePath);
         if (Date.now() - stats.ctimeMs > 3600000) {
             fs.unlinkSync(filePath);
-            console.log(`🗑️ Deleted old file: ${file}`);
         }
     });
 }, 3600000);
 
-// ============ CLOUDCONVERT V2 CONVERSION FUNCTION ============
+// ============ CORRECTED CLOUDCONVERT FUNCTION ============
 
 async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     if (!cloudConvert) {
-        throw new Error('CloudConvert API key not configured. Please add CLOUDCONVERT_API_KEY environment variable.');
+        throw new Error('CloudConvert API key not configured');
     }
     
     try {
         console.log(`🔄 CloudConvert: ${inputFormat} → ${outputFormat}`);
         
-        // Create job (v2 syntax)
+        // Create job with PROPER task structure
+        // Task names must be unique and referenced correctly
         const job = await cloudConvert.jobs.create({
             tasks: {
-                'import-file': {
+                // Step 1: Import/upload the file
+                'import-my-file': {
                     operation: 'import/upload'
                 },
-                'convert-file': {
+                // Step 2: Convert the file (input MUST reference the import task)
+                'convert-my-file': {
                     operation: 'convert',
-                    input: 'import-file',
+                    input: 'import-my-file',  // ← CRITICAL: references the import task
                     input_format: inputFormat,
                     output_format: outputFormat,
                     engine: 'default'
                 },
-                'export-file': {
+                // Step 3: Export to URL
+                'export-my-file': {
                     operation: 'export/url',
-                    input: 'convert-file'
+                    input: 'convert-my-file'  // ← CRITICAL: references the convert task
                 }
             }
         });
 
-        // Upload file (v2 method)
-        const uploadTask = job.tasks.find(task => task.name === 'import-file');
+        // Find the upload task
+        const uploadTask = job.tasks.find(task => task.name === 'import-my-file');
+        
+        // Upload using the SDK's built-in upload method
         const { Readable } = require('stream');
         const bufferStream = new Readable();
         bufferStream.push(fileBuffer);
         bufferStream.push(null);
         
-        await cloudConvert.tasks.upload(uploadTask, bufferStream, 'file');
+        await cloudConvert.tasks.upload(uploadTask, bufferStream, 'input_file');
+        
+        console.log('📤 File uploaded, waiting for conversion...');
 
-        // Wait for completion
+        // Wait for job completion
         let finishedJob = await cloudConvert.jobs.wait(job.id);
         
         if (finishedJob.status === 'error') {
             throw new Error(finishedJob.message || 'Conversion failed');
         }
 
-        // Get download URL
-        const exportTask = finishedJob.tasks.find(task => task.name === 'export-file');
+        // Get the export task
+        const exportTask = finishedJob.tasks.find(task => task.name === 'export-my-file');
+        
+        if (!exportTask || !exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
+            throw new Error('No output file generated');
+        }
+        
         const file = exportTask.result.files[0];
         const downloadUrl = file.url;
         
-        // Download converted file
+        console.log(`📥 Downloading converted file from: ${downloadUrl}`);
+        
+        // Download the converted file
         const https = require('https');
         const outputBuffer = await new Promise((resolve, reject) => {
             https.get(downloadUrl, (response) => {
+                if (response.statusCode !== 200) {
+                    reject(new Error(`Download failed with status ${response.statusCode}`));
+                    return;
+                }
                 const chunks = [];
                 response.on('data', (chunk) => chunks.push(chunk));
                 response.on('end', () => resolve(Buffer.concat(chunks)));
                 response.on('error', reject);
-            });
+            }).on('error', reject);
         });
         
         console.log(`✅ Conversion successful: ${(outputBuffer.length / 1024).toFixed(2)} KB`);
@@ -123,7 +139,7 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     }
 }
 
-// ============ PDF-ONLY OPERATIONS (FREE, NO API NEEDED) ============
+// ============ FREE PDF OPERATIONS (No API needed) ============
 
 async function protectPdf(pdfBuffer, password) {
     const pdfDoc = await PDFDocument.load(pdfBuffer);
@@ -134,10 +150,7 @@ async function protectPdf(pdfBuffer, password) {
             printing: 'highResolution',
             modifying: false,
             copying: false,
-            annotating: false,
-            fillingForms: false,
-            contentAccessibility: true,
-            documentAssembly: false
+            annotating: false
         }
     });
     return await pdfDoc.save();
@@ -187,18 +200,17 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
             return res.status(400).json({ success: false, error: 'No files uploaded' });
         }
         
-        console.log(`📁 Processing: ${tool} - ${files[0].originalname} (${(files[0].size / 1024).toFixed(2)} KB)`);
+        console.log(`📁 Processing: ${tool} - ${files[0].originalname}`);
         
         let outputBuffer;
         let outputFilename;
         
         switch(tool) {
-            // ============ CLOUDCONVERT OPERATIONS (Require API Key) ============
             case 'word-to-pdf':
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'Word to PDF conversion requires CloudConvert API key. Please add CLOUDCONVERT_API_KEY environment variable.' 
+                        error: 'CloudConvert API key not configured. Add CLOUDCONVERT_API_KEY in Render environment variables.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'docx', 'pdf');
@@ -209,7 +221,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'PDF to Word conversion requires CloudConvert API key. Please add CLOUDCONVERT_API_KEY environment variable.' 
+                        error: 'CloudConvert API key not configured.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'docx');
@@ -220,14 +232,13 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'PDF to Images conversion requires CloudConvert API key. Please add CLOUDCONVERT_API_KEY environment variable.' 
+                        error: 'CloudConvert API key not configured.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'png');
                 outputFilename = 'converted_images.zip';
                 break;
             
-            // ============ FREE PDF OPERATIONS (No API Key Needed) ============
             case 'images-to-pdf':
                 const ext = files[0].originalname.split('.').pop().toLowerCase();
                 outputBuffer = await imageToPdf(files[0].buffer, ext);
@@ -252,7 +263,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid tool selected' });
         }
         
-        // Save output file
+        // Save output
         const tempFilePath = path.join(tempDir, `${Date.now()}_${outputFilename}`);
         fs.writeFileSync(tempFilePath, outputBuffer);
         
@@ -297,16 +308,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Start server
 app.listen(PORT, () => {
     console.log(`\n🚀 Server running on port ${PORT}`);
-    console.log(`📍 Visit: http://localhost:${PORT}`);
-    console.log(`🔑 CloudConvert API: ${IS_CLOUDCONVERT_AVAILABLE ? '✅ Configured' : '❌ Not configured'}`);
-    
-    if (!IS_CLOUDCONVERT_AVAILABLE) {
-        console.log('\n⚠️  Word to PDF and PDF to Word will NOT work!');
-        console.log('To enable them, add CLOUDCONVERT_API_KEY in Render Environment Variables.\n');
-    } else {
-        console.log('\n✅ All conversions are ready to use!\n');
-    }
+    console.log(`🔑 CloudConvert API: ${IS_CLOUDCONVERT_AVAILABLE ? '✅ Configureed' : '❌ Not configured'}`);
 });
