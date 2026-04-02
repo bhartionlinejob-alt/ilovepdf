@@ -13,13 +13,13 @@ const PORT = process.env.PORT || 3000;
 const CLOUDCONVERT_API_KEY = process.env.CLOUDCONVERT_API_KEY;
 const IS_CLOUDCONVERT_AVAILABLE = !!CLOUDCONVERT_API_KEY;
 
-// Initialize CloudConvert CORRECTLY (v2 SDK - pass string directly)
+// Initialize CloudConvert - CORRECT way per SDK docs[citation:2][citation:10]
 let cloudConvert = null;
 if (IS_CLOUDCONVERT_AVAILABLE) {
     cloudConvert = new CloudConvert(CLOUDCONVERT_API_KEY);
     console.log('✅ CloudConvert API initialized');
 } else {
-    console.warn('⚠️ CLOUDCONVERT_API_KEY not set');
+    console.warn('⚠️ CLOUDCONVERT_API_KEY not set. Word conversion will not work.');
 }
 
 // Configure multer
@@ -50,7 +50,7 @@ setInterval(() => {
     });
 }, 3600000);
 
-// ============ CORRECTED CLOUDCONVERT FUNCTION ============
+// ============ CLOUDCONVERT FUNCTION (Following SDK Documentation[citation:2][citation:6]) ============
 
 async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     if (!cloudConvert) {
@@ -60,8 +60,7 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
     try {
         console.log(`🔄 CloudConvert: ${inputFormat} → ${outputFormat}`);
         
-        // Create job with CORRECT task structure
-        // Each task must have a unique name and proper input references
+        // Create job - following official SDK structure[citation:2]
         const job = await cloudConvert.jobs.create({
             tasks: {
                 'upload-file': {
@@ -69,14 +68,14 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
                 },
                 'convert-file': {
                     operation: 'convert',
-                    input: 'upload-file',  // MUST reference the upload task
+                    input: 'upload-file',  // References the upload task
                     input_format: inputFormat,
                     output_format: outputFormat,
                     engine: 'default'
                 },
                 'export-file': {
                     operation: 'export/url',
-                    input: 'convert-file'  // MUST reference the convert task
+                    input: 'convert-file'  // References the convert task
                 }
             }
         });
@@ -88,7 +87,7 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
             throw new Error('Upload task not found');
         }
 
-        // Upload file using the SDK's upload method
+        // Upload using SDK's built-in method[citation:2]
         const { Readable } = require('stream');
         const bufferStream = new Readable();
         bufferStream.push(fileBuffer);
@@ -98,16 +97,15 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
         
         console.log('📤 File uploaded, waiting for conversion...');
 
-        // Wait for job completion (polling)
-        let jobStatus = await cloudConvert.jobs.wait(job.id);
+        // Wait for job completion[citation:2]
+        let finishedJob = await cloudConvert.jobs.wait(job.id);
         
-        // Check if job has error
-        if (jobStatus.status === 'error') {
-            throw new Error(jobStatus.message || 'Conversion failed');
+        if (finishedJob.status === 'error') {
+            throw new Error(finishedJob.message || 'Conversion failed');
         }
 
-        // Find export task
-        const exportTask = jobStatus.tasks.find(task => task.name === 'export-file');
+        // Find export task and get download URL[citation:2][citation:6]
+        const exportTask = finishedJob.tasks.find(task => task.name === 'export-file');
         
         if (!exportTask || !exportTask.result || !exportTask.result.files || exportTask.result.files.length === 0) {
             throw new Error('No output file generated');
@@ -118,7 +116,7 @@ async function convertWithCloudConvert(fileBuffer, inputFormat, outputFormat) {
         
         console.log(`📥 Downloading from: ${downloadUrl}`);
         
-        // Download the converted file
+        // Download the converted file[citation:2]
         const outputBuffer = await new Promise((resolve, reject) => {
             https.get(downloadUrl, (response) => {
                 if (response.statusCode !== 200) {
@@ -212,7 +210,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured' 
+                        error: 'CloudConvert API key not configured. Add CLOUDCONVERT_API_KEY in Render environment variables.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'docx', 'pdf');
@@ -223,7 +221,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured' 
+                        error: 'CloudConvert API key not configured.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'docx');
@@ -234,7 +232,7 @@ app.post('/api/convert', upload.array('files', 5), async (req, res) => {
                 if (!IS_CLOUDCONVERT_AVAILABLE) {
                     return res.status(400).json({ 
                         success: false, 
-                        error: 'CloudConvert API key not configured' 
+                        error: 'CloudConvert API key not configured.' 
                     });
                 }
                 outputBuffer = await convertWithCloudConvert(files[0].buffer, 'pdf', 'png');
