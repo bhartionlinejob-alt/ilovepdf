@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Free online PDF tools - Convert PDF to Word, Word to PDF, PDF to Images, Images to PDF, and Password Protect PDFs. Fast, secure, and easy to use.">
+    <meta name="keywords" content="PDF tools, PDF converter, PDF to Word, Word to PDF, PDF to Images, PDF password protect, free PDF tools online">
+    <meta name="author" content="PDF-4U">
+    <meta name="robots" content="index, follow">
+    <title>PDF-4U | Free PDF Tools - Convert, Protect & Edit PDFs Online</title>
+    
+    <!-- Google Fonts for better typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .tool-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .tool-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .tool-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .tool-card p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .upload-area.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-box i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Password Input */
+        .password-input {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            width: 100%;
+            font-size: 1rem;
+            display: none;
+        }
+
+        .password-input.show {
+            display: block;
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Result Area */
+        .result-area {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-area.show {
+            display: block;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">PDF-4U</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Free PDF Tools Suite</h1>
+            <p>Convert, protect, and edit your PDF files instantly - 100% free & secure</p>
+        </div>
+
+        <div class="tools-grid">
+            <div class="tool-card" data-tool="pdf-to-word">
+                <div class="tool-icon">📄➡️📝</div>
+                <h3>PDF to Word</h3>
+                <p>Convert PDF to editable Word documents</p>
+            </div>
+            <div class="tool-card" data-tool="word-to-pdf">
+                <div class="tool-icon">📝➡️📄</div>
+                <h3>Word to PDF</h3>
+                <p>Convert Word files to PDF format</p>
+            </div>
+            <div class="tool-card" data-tool="pdf-to-images">
+                <div class="tool-icon">📄➡️🖼️</div>
+                <h3>PDF to Images</h3>
+                <p>Extract images from PDF files</p>
+            </div>
+            <div class="tool-card" data-tool="images-to-pdf">
+                <div class="tool-icon">🖼️➡️📄</div>
+                <h3>Images to PDF</h3>
+                <p>Convert multiple images to PDF</p>
+            </div>
+            <div class="tool-card" data-tool="password-protect">
+                <div class="tool-icon">🔒</div>
+                <h3>Password Protect</h3>
+                <p>Add password protection to PDFs</p>
+            </div>
+        </div>
+
+        <!-- Upload Area -->
+        <div id="uploadArea" class="upload-area">
+            <h2 id="toolTitle" style="text-align: center; margin-bottom: 1rem;"></h2>
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Click or drag file here</p>
+                <p style="font-size: 0.8rem; color: #999;">Max file size: 10MB</p>
+            </div>
+            <input type="file" id="fileInput" accept="">
+            <input type="password" id="passwordInput" class="password-input" placeholder="Enter password to protect PDF">
+            <div style="text-align: center;">
+                <button class="btn" onclick="processFile()">Convert Now</button>
+            </div>
+            <div class="loader" id="loader"></div>
+            <div id="resultArea" class="result-area">
+                <p id="resultMessage"></p>
+                <a id="downloadLink" class="btn" style="display: inline-block; text-decoration: none;">Download File</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>📁 Max file size: 10MB | Files stored in memory and auto-deleted after 1 hour</p>
+            <p style="margin-top: 1rem;">&copy; 2024 PDF-4U - Free PDF Tools Online</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentTool = '';
+
+        // Tool selection
+        document.querySelectorAll('.tool-card').forEach(card => {
+            card.addEventListener('click', () => {
+                currentTool = card.dataset.tool;
+                document.getElementById('toolTitle').innerText = card.querySelector('h3').innerText;
+                document.getElementById('uploadArea').classList.add('active');
+                document.getElementById('resultArea').classList.remove('show');
+                
+                // Set file accept types
+                const fileInput = document.getElementById('fileInput');
+                if (currentTool === 'pdf-to-word' || currentTool === 'pdf-to-images' || currentTool === 'password-protect') {
+                    fileInput.accept = '.pdf';
+                } else if (currentTool === 'word-to-pdf') {
+                    fileInput.accept = '.doc,.docx';
+                } else if (currentTool === 'images-to-pdf') {
+                    fileInput.accept = '.jpg,.jpeg,.png,.gif';
+                }
+                
+                // Show password input only for password-protect
+                const passwordInput = document.getElementById('passwordInput');
+                if (currentTool === 'password-protect') {
+                    passwordInput.classList.add('show');
+                } else {
+                    passwordInput.classList.remove('show');
+                }
+            });
+        });
+
+        async function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB');
+                return;
+            }
+            
+            const loader = document.getElementById('loader');
+            const resultArea = document.getElementById('resultArea');
+            const resultMessage = document.getElementById('resultMessage');
+            const downloadLink = document.getElementById('downloadLink');
+            
+            loader.style.display = 'block';
+            resultArea.classList.remove('show');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('tool', currentTool);
+            
+            if (currentTool === 'password-protect') {
+                const password = document.getElementById('passwordInput').value;
+                if (!password) {
+                    alert('Please enter a password');
+                    loader.style.display = 'none';
+                    return;
+                }
+                formData.append('password', password);
+            }
+            
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultMessage.innerText = '✅ Conversion successful! Your file is ready.';
+                    downloadLink.href = data.downloadUrl;
+                    downloadLink.download = data.filename;
+                    downloadLink.style.display = 'inline-block';
+                    resultArea.classList.add('show');
+                } else {
+                    resultMessage.innerText = '❌ Error: ' + data.error;
+                    resultArea.classList.add('show');
+                }
+            } catch (error) {
+                resultMessage.innerText = '❌ Error processing file. Please try again.';
+                resultArea.classList.add('show');
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
