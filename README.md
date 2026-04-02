@@ -1,28 +1,34 @@
-# PDF-4U Online - Free PDF Tools Website
+# PDF-4U Online - Professional PDF Tools
 
 ## Features
-- ✅ PDF to Word conversion
-- ✅ Word to PDF conversion  
-- ✅ PDF to Images extraction
-- ✅ Images to PDF creation
-- ✅ Password protect PDFs
+- ✅ **Word to PDF** (via CloudConvert)
+- ✅ **PDF to Word** (via CloudConvert)
+- ✅ **PDF to Images** (via CloudConvert)
+- ✅ **Images to PDF** (Free - No API needed)
+- ✅ **Password Protect PDF** (Free - No API needed)
+- ✅ **Merge PDFs** (Free - No API needed)
 
-## Tech Stack
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Backend**: Node.js + Express
-- **File Processing**: pdf-lib, sharp, mammoth
+## Setup Instructions
 
-## Deployment on Render
+### 1. Get CloudConvert API Key (Required for Word/PDF conversions)
+1. Go to https://cloudconvert.com/dashboard/api/v2/keys
+2. Sign up for free account
+3. Create new API key
+4. Free tier: 25 conversion minutes/day
 
-1. Push code to GitHub repository
-2. Log into Render.com
-3. Click "New +" → "Web Service"
+### 2. Deploy on Render
+1. Push this code to GitHub
+2. Go to Render.com
+3. Create new Web Service
 4. Connect your GitHub repo
-5. Render auto-detects Node.js
-6. Click "Deploy"
+5. Add Environment Variable:
+   - Key: `CLOUDCONVERT_API_KEY`
+   - Value: `your-api-key`
+6. Click Deploy
 
-## Local Development
+### 3. Local Development
 ```bash
 npm install
+export CLOUDCONVERT_API_KEY=your_key_here
 npm start
 # Visit http://localhost:3000
