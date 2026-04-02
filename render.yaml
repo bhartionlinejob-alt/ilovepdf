@@ -1,13 +1,13 @@
 services:
   - type: web
     name: pdf-4u-online
-    runtime: image
-    repo: https://github.com/bhartionlinejob-alt/pdf-4u-online
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
     plan: free
-    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: 18.17.0
-    healthCheckPath: /health
-    domains:
-      - pdf-4u.online
+      - key: CLOUDCONVERT_API_KEY
+        sync: false  # This means you'll set it manually in Render dashboard
