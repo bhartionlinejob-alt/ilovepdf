@@ -2,7 +2,7 @@ services:
   - type: web
     name: pdf-4u-online
     runtime: image
-    repo: https://github.com/YOUR_USERNAME/pdf-4u-online
+    repo: https://github.com/bhartionlinejob-alt/pdf-4u-online
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
